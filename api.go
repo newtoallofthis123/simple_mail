@@ -25,6 +25,13 @@ func NewApiServer(env *Env) *ApiServer {
 func (a *ApiServer) handleEmail(c *gin.Context) {
 	// bearer token AuthSecret
 	auth := c.GetHeader("Authorization")
+	if auth == "" {
+		auth = c.Query("token")
+	}
+	if auth == "" {
+		c.JSON(401, gin.H{"error": "Unauthorized"})
+		return
+	}
 	if !strings.HasPrefix(auth, "Bearer ") {
 		c.JSON(401, gin.H{"error": "Unauthorized"})
 		return
@@ -93,10 +100,19 @@ func (a *ApiServer) handleGetByMail(c *gin.Context) {
 func (a *ApiServer) Start() {
 	r := gin.Default()
 
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Next()
+	})
+
 	r.POST("/email", a.handleEmail)
 	r.GET("/emails", a.handleGetEmails)
 	r.GET("/email/:id", a.handleGetById)
 	r.GET("/email/mail/:mail", a.handleGetByMail)
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "Hello, World!"})
+	})
 
 	r.Run(":" + a.Port)
 }
